@@ -1,6 +1,8 @@
 import torch
-from matrix_utils import skew, eye_like, batch_eye
-from transform import rotation_from_vector, inverse
+from typing import Union
+
+from .matrix_utils import skew, eye_like, batch_eye
+from .transform import rotation_from_vector, inverse
 
 def transform(points: torch.tensor, matrix: torch.tensor,
                  translate=True, rotate=True) -> torch.Tensor:
@@ -45,15 +47,9 @@ def random_rotate(pc: torch.tensor) -> torch.tensor:
     if pc.dim() == 2:
         pc = pc.unsqueeze(0)
         d2 = True
-    
-    theta = torch.rand(pc.shape[0]) * 2 * 3.1415926
-    
-    rot = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
-    
-    rot[..., 0, 0] = torch.cos(theta)
-    rot[..., 0, 2] = torch.sin(theta)
-    rot[..., 2, 0] = -torch.sin(theta)
-    rot[..., 2, 2] = torch.cos(theta)
+        
+    rotation_vec = torch.randn(pc.shape[0], 3, device=pc.device, dtype=pc.dtype) * 3.1415926
+    rot = rotation_from_vector(rotation_vec)
     
     if d2:
         rot = rot.squeeze(0)
@@ -88,7 +84,7 @@ def random_translate(pc: torch.tensor) -> torch.tensor:
     return transform(pc, trans_mat), trans_mat
 
 
-def normalize(pc) -> torch.tensor:
+def normalize(pc: torch.tensor, return_inverse: bool=False) -> Union[torch.tensor, torch.tensor]:
     """
     Normalizes the point cloud to have a pc mean of 0
     and a distance between between closest points with a standard deviation of 1.
@@ -96,14 +92,18 @@ def normalize(pc) -> torch.tensor:
     Parameters
     ----------
     pc : torch.Tensor # (..., N, 3)
+    return_inverse : bool, optional
+        Whether to return the inverse transformation matrix, by default False
 
     Returns
     -------
     pc : torch.tensor # (..., N, 3)
     tf : torch.tensor # (..., 4, 4)
     """
+    d2 = False
     if pc.dim() == 2:
         pc = pc.unsqueeze(0)
+        d2 = True
     
     trans = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
     trans[..., :3, 3] = -pc.mean(dim=-2) # (..., 3)
@@ -113,9 +113,18 @@ def normalize(pc) -> torch.tensor:
     
     scale = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
     scale = scale / avg_point_distance # (..., 4, 4)
+    scale[..., 3, 3] = 1
 
     tf = torch.matmul(scale, trans)
     pc = transform(pc, tf)
+    
+    if d2:
+        tf = tf.squeeze(0)
+        pc = pc.squeeze(0)
+        
+    if return_inverse:
+        inv_tf = torch.linalg.inv(tf)
+        return pc, inv_tf
     
     return pc, tf
 

@@ -1,6 +1,6 @@
 import torch
 
-from matrix_utils import skew, batch_eye
+from .matrix_utils import skew, batch_eye
 
 def inverse(tf: torch.Tensor) -> torch.Tensor:
     """
@@ -117,7 +117,7 @@ def rotation_from_vector(v):
     theta = theta + 1e-8
     theta_un = theta.unsqueeze(-1).repeat(1, 1, 3)
     v = v / theta # (B, 3)
-    r1 = batch_eye(v)
+    r1 = batch_eye(v.shape, device=v.device, dtype=v.dtype)
     r2 = torch.sin(theta_un) * skew(v)
     r3 = (1 - torch.cos(theta_un)) * torch.matmul(skew(v), skew(v))
     
