@@ -146,7 +146,7 @@ def knn(src, tgt, k) -> torch.tensor:
     src = src.unsqueeze(0) if src.dim() == 2 else src
     tgt = tgt.unsqueeze(0) if tgt.dim() == 2 else tgt
     
-    dist = src.unsqueeze(-1) - tgt.unsqueeze(-2) # (..., N, M, C)
+    dist = src.unsqueeze(-2) - tgt.unsqueeze(-3) # (..., N, M, C)
     dist = torch.sum(dist ** 2, dim=-1) # (..., N, M)
     val, idx = dist.topk(k, dim=-1, largest=False) # (..., N, k)
     
