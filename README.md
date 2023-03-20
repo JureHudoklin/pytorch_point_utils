@@ -1,5 +1,5 @@
 # Pytorch Point Utils
-UNDER DEVELOPEMENT
+UNDER DEVELOPMENT
 Pytorch Point Utils is a python library built using PyTorch that contains helper functions for matrix operations and transformations commonly used in computer vision and robotics.
 
 ## Installation

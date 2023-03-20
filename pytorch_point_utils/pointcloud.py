@@ -84,7 +84,7 @@ def random_translate(pc: torch.tensor) -> torch.tensor:
     return transform(pc, trans_mat), trans_mat
 
 
-def normalize(pc: torch.tensor, return_inverse: bool=False) -> Union[torch.tensor, torch.tensor]:
+def normalize(pc: torch.tensor, scale = 1.0, return_inverse: bool=False) -> Union[torch.tensor, torch.tensor]:
     """
     Normalizes the point cloud to have a pc mean of 0
     and a distance between between closest points with a standard deviation of 1.
@@ -111,11 +111,11 @@ def normalize(pc: torch.tensor, return_inverse: bool=False) -> Union[torch.tenso
     avg_point_distance = knn(pc, pc, 2)[0] # (..., N, 2)
     avg_point_distance = avg_point_distance[..., 1].mean(dim=-1, keepdim=True) # (..., 1)
     
-    scale = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
-    scale = scale / avg_point_distance # (..., 4, 4)
-    scale[..., 3, 3] = 1
+    scale_mtx = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
+    scale_mtx = scale_mtx * scale #avg_point_distance # (..., 4, 4)
+    scale_mtx[..., 3, 3] = 1
 
-    tf = torch.matmul(scale, trans)
+    tf = torch.matmul(scale_mtx, trans)
     pc = transform(pc, tf)
     
     if d2:
