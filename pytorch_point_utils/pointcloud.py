@@ -33,7 +33,32 @@ def transform(points: torch.tensor, matrix: torch.tensor,
     
     return point_new[..., :3]
 
-def random_rotate(pc: torch.tensor) -> torch.tensor:
+def scale(pc: torch.tensor, scale: float) -> torch.tensor:
+    """
+    Parameters
+    ----------
+    pc : torch.Tensor # (..., N, 3)
+    scale : float
+    
+    Returns
+    -------
+    torch.Tensor # (..., N, 3)
+    """
+    d2 = False
+    if pc.dim() == 2:
+        pc = pc.unsqueeze(0)
+        d2 = True
+        
+    scale_mtx = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
+    scale_mtx = scale_mtx * scale
+    
+    if d2:
+        scale_mtx = scale_mtx.squeeze(0)
+        pc = pc.squeeze(0)
+    
+    return transform(pc, scale_mtx)
+
+def random_rotate(pc: torch.tensor) -> Union[torch.tensor, torch.tensor]:
     """
     Parameters
     ----------
@@ -57,7 +82,7 @@ def random_rotate(pc: torch.tensor) -> torch.tensor:
             
     return transform(pc, rot), rot
 
-def random_translate(pc: torch.tensor) -> torch.tensor:
+def random_translate(pc: torch.tensor) -> Union[torch.tensor, torch.tensor]:
     """
     Parameters
     ----------
@@ -112,7 +137,7 @@ def normalize(pc: torch.tensor, scale = 1.0, return_inverse: bool=False) -> Unio
     avg_point_distance = avg_point_distance[..., 1].mean(dim=-1, keepdim=True) # (..., 1)
     
     scale_mtx = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
-    scale_mtx = scale_mtx * scale #avg_point_distance # (..., 4, 4)
+    scale_mtx = scale_mtx * scale #/ avg_point_distance # (..., 4, 4)
     scale_mtx[..., 3, 3] = 1
 
     tf = torch.matmul(scale_mtx, trans)
@@ -128,7 +153,7 @@ def normalize(pc: torch.tensor, scale = 1.0, return_inverse: bool=False) -> Unio
     
     return pc, tf
 
-def knn(src, tgt, k) -> torch.tensor:
+def knn(src, tgt, k) -> Union[torch.tensor, torch.tensor]:
     """
     Find the k nearest neighbors of each point in src.
     
