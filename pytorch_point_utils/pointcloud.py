@@ -133,11 +133,9 @@ def normalize(pc: torch.tensor, scale = 1.0, return_inverse: bool=False) -> Unio
     trans = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
     trans[..., :3, 3] = -pc.mean(dim=-2) # (..., 3)
     
-    avg_point_distance = knn(pc, pc, 2)[0] # (..., N, 2)
-    avg_point_distance = avg_point_distance[..., 1].mean(dim=-1, keepdim=True) # (..., 1)
     
     scale_mtx = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
-    scale_mtx = scale_mtx * scale #/ avg_point_distance # (..., 4, 4)
+    scale_mtx = scale_mtx * scale / torch.max(torch.linalg.norm(pc, dim=-1))
     scale_mtx[..., 3, 3] = 1
 
     tf = torch.matmul(scale_mtx, trans)
