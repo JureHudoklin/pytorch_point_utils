@@ -1,10 +1,10 @@
 import torch
-from typing import Union
+from typing import Union, Tuple
 
 from .matrix_utils import skew, eye_like, batch_eye
 from .transform import rotation_from_vector, inverse
 
-def transform(points: torch.tensor, matrix: torch.tensor,
+def transform(points: torch.Tensor, matrix: torch.Tensor,
                  translate=True, rotate=True) -> torch.Tensor:
     """
     Transform points
@@ -33,7 +33,7 @@ def transform(points: torch.tensor, matrix: torch.tensor,
     
     return point_new[..., :3]
 
-def scale(pc: torch.tensor, scale: float) -> torch.tensor:
+def scale(pc: torch.Tensor, scale: float) -> torch.Tensor:
     """
     Parameters
     ----------
@@ -58,7 +58,7 @@ def scale(pc: torch.tensor, scale: float) -> torch.tensor:
     
     return transform(pc, scale_mtx)
 
-def random_rotate(pc: torch.tensor) -> Union[torch.tensor, torch.tensor]:
+def random_rotate(pc: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Parameters
     ----------
@@ -82,7 +82,7 @@ def random_rotate(pc: torch.tensor) -> Union[torch.tensor, torch.tensor]:
             
     return transform(pc, rot), rot
 
-def random_translate(pc: torch.tensor) -> Union[torch.tensor, torch.tensor]:
+def random_translate(pc: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Parameters
     ----------
@@ -109,7 +109,7 @@ def random_translate(pc: torch.tensor) -> Union[torch.tensor, torch.tensor]:
     return transform(pc, trans_mat), trans_mat
 
 
-def normalize(pc: torch.tensor, scale = 1.0, return_inverse: bool=False) -> Union[torch.tensor, torch.tensor]:
+def normalize(pc: torch.Tensor, scale = 1.0, return_inverse: bool=False) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Normalizes the point cloud to have a pc mean of 0
     and a distance between between closest points with a standard deviation of 1.
@@ -122,8 +122,8 @@ def normalize(pc: torch.tensor, scale = 1.0, return_inverse: bool=False) -> Unio
 
     Returns
     -------
-    pc : torch.tensor # (..., N, 3)
-    tf : torch.tensor # (..., 4, 4)
+    pc : torch.Tensor # (..., N, 3)
+    tf : torch.Tensor # (..., 4, 4)
     """
     d2 = False
     if pc.dim() == 2:
@@ -133,13 +133,14 @@ def normalize(pc: torch.tensor, scale = 1.0, return_inverse: bool=False) -> Unio
     trans = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
     trans[..., :3, 3] = -pc.mean(dim=-2) # (..., 3)
     
+    pc = pc - pc.mean(dim=-2, keepdim=True)
     
     scale_mtx = torch.eye(4, device=pc.device, dtype=pc.dtype).unsqueeze(0).repeat(pc.shape[0], 1, 1)
     scale_mtx = scale_mtx * scale / torch.max(torch.linalg.norm(pc, dim=-1))
     scale_mtx[..., 3, 3] = 1
 
     tf = torch.matmul(scale_mtx, trans)
-    pc = transform(pc, tf)
+    pc = transform(pc, scale_mtx)
     
     if d2:
         tf = tf.squeeze(0)
@@ -151,7 +152,8 @@ def normalize(pc: torch.tensor, scale = 1.0, return_inverse: bool=False) -> Unio
     
     return pc, tf
 
-def knn(src, tgt, k) -> Union[torch.tensor, torch.tensor]:
+
+def knn(src, tgt, k) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Find the k nearest neighbors of each point in src.
     
@@ -197,7 +199,7 @@ def jitter(pc: torch.Tensor, sigma:int = 0.0005, clip:int = 0.003) -> torch.Tens
     
     return pc
 
-def svd_estimate_tf(static, moving, weights=None):
+def svd_estimate_tf(static, moving, weights=None) -> torch.Tensor:
     """
     Estimate the transformation matrix between  two matched point clouds using SVD
 
@@ -247,7 +249,7 @@ def point_to_plane_icp_step(static_pc: torch.Tensor,
                             moving_pc: torch.Tensor,
                             normal_st: torch.Tensor,
                             normal_mv: torch.Tensor = None,
-                            weights: torch.Tensor = None):
+                            weights: torch.Tensor = None) -> torch.Tensor:
     """ Perform one step of ICP using point-to-plane error. It is assumed that the point clouds are already matched.
 
     Parameters
